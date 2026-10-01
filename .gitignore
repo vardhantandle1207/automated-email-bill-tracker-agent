@@ -1,0 +1,15 @@
+# secrets
+.env
+token.json
+credentials.json
+service-account*.json
+*-sa.json
+# local state written by the agent
+data/bills.csv
+data/history.json
+# python
+.venv/
+__pycache__/
+*.pyc
+# eval cache of Gemini outputs
+data/.cache/

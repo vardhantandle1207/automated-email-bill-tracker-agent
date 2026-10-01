@@ -1,0 +1,4 @@
+file,vendor,amount,currency,due_date,paid,autopay
+netflix.txt,Netflix,649.00,INR,2026-10-28,true,false
+electricity.txt,TSSPDCL,1240.50,INR,2026-10-12,false,false
+aws.txt,Amazon Web Services,42.17,USD,2026-10-15,false,true

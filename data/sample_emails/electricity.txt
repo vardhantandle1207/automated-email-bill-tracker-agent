@@ -1,0 +1,15 @@
+From: TSSPDCL <no-reply@tssouthernpower.com>
+Subject: Electricity Bill - Due Shortly
+
+Dear Consumer,
+
+Your electricity bill for the billing cycle September 2026 is generated.
+
+Service No: 1234567890
+Units consumed: 214
+Bill amount: INR 1,240.50
+Due date: 12-10-2026
+
+Please pay before the due date to avoid a late payment surcharge.
+
+TSSPDCL

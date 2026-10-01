@@ -1,0 +1,12 @@
+.env
+token.json
+credentials.json
+service-account*.json
+*-sa.json
+data/bills.csv
+data/history.json
+.venv/
+__pycache__/
+.git/
+docs/
+data/.cache/

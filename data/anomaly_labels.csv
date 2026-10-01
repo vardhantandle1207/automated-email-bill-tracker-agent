@@ -1,0 +1,4 @@
+file,as_of,overdue,above_trend,notes
+netflix.txt,2026-10-20,0,0,receipt: already charged; flat vs history
+electricity.txt,2026-10-20,1,1,unpaid and past 12 Oct due date; 1240.50 vs ~900 3-month avg
+aws.txt,2026-10-20,0,0,autopay on 15 Oct so not really overdue; ~3% above avg

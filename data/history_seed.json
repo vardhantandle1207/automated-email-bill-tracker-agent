@@ -1,0 +1,17 @@
+{
+  "netflix": [
+    {"due_date": "2026-07-28", "amount_base": 649.0, "source_id": "seed"},
+    {"due_date": "2026-08-28", "amount_base": 649.0, "source_id": "seed"},
+    {"due_date": "2026-09-28", "amount_base": 649.0, "source_id": "seed"}
+  ],
+  "tsspdcl": [
+    {"due_date": "2026-07-12", "amount_base": 870.0, "source_id": "seed"},
+    {"due_date": "2026-08-12", "amount_base": 940.0, "source_id": "seed"},
+    {"due_date": "2026-09-12", "amount_base": 890.0, "source_id": "seed"}
+  ],
+  "amazonwebservices": [
+    {"due_date": "2026-07-15", "amount_base": 3320.0, "source_id": "seed"},
+    {"due_date": "2026-08-15", "amount_base": 3486.0, "source_id": "seed"},
+    {"due_date": "2026-09-15", "amount_base": 3403.0, "source_id": "seed"}
+  ]
+}

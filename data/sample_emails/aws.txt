@@ -1,0 +1,15 @@
+From: AWS Billing <no-reply-aws@amazon.com>
+Subject: Your AWS bill is available
+
+Hello,
+
+Your Amazon Web Services invoice for September 2026 is now available.
+
+Account: 8817-XXXX-2043
+Total amount due: $42.17
+Invoice date: September 30, 2026
+Payment due: October 15, 2026
+
+This amount will be automatically charged to your card on file.
+
+Amazon Web Services

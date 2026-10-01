@@ -1,0 +1,15 @@
+From: Netflix <info@mailer.netflix.com>
+Subject: Your Netflix receipt
+
+Hi Vardhan,
+
+Thanks for being a member. Here are the details of your latest payment.
+
+Plan: Premium
+Amount charged: Rs. 649.00
+Payment date: 28 September 2026
+Next billing date: 28 October 2026
+
+Your payment method ending in 4021 was charged.
+
+The Netflix Team
