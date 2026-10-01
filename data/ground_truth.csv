@@ -1,4 +1,19 @@
-file,vendor,amount,currency,due_date,paid,autopay
-netflix.txt,Netflix,649.00,INR,2026-10-28,true,false
-electricity.txt,TSSPDCL,1240.50,INR,2026-10-12,false,false
-aws.txt,Amazon Web Services,42.17,USD,2026-10-15,false,true
+file,vendor,amount,currency,due_date,paid,autopay,is_bill
+netflix.txt,Netflix,649.00,INR,2026-10-28,true,false,true
+electricity.txt,TSSPDCL,1240.50,INR,2026-10-12,false,false,true
+aws.txt,Amazon Web Services,42.17,USD,2026-10-15,false,true,true
+jio_postpaid.txt,Jio,799.00,INR,2026-10-18,false,false,true
+airtel_broadband.txt,Airtel,1178.82,INR,2026-10-05,false,true,true
+spotify.txt,Spotify,119.00,INR,2026-10-10,true,false,true
+github.txt,GitHub,4.00,USD,,true,false,true
+hetzner.txt,Hetzner,5.83,EUR,,false,true,true
+lic_premium.txt,LIC,12450.00,INR,2026-09-25,false,false,true
+water.txt,HMWSSB,384.00,INR,2026-10-25,false,false,true
+digitalocean.txt,DigitalOcean,18.40,USD,2026-11-01,true,false,true
+economist.txt,The Economist,12.99,GBP,2026-11-03,false,true,true
+hdfc_credit_card.txt,HDFC Bank,23415.60,INR,2026-10-08,false,false,true
+amazon_promo.txt,,,,,,,false
+netflix_price_change.txt,,,,,,,false
+flipkart_shipping.txt,,,,,,,false
+hdfc_txn_alert.txt,,,,,,,false
+newsletter.txt,,,,,,,false

@@ -1,0 +1,11 @@
+From: GitHub <billing@github.com>
+Subject: [GitHub] Payment receipt for octo-dev
+
+We received payment for your GitHub Pro subscription. Thanks for your business!
+
+Date: September 3, 2026
+Amount: $4.00 USD
+Charged to: Visa ending in 4021
+Billing period: Sep 3, 2026 - Oct 2, 2026
+
+GitHub, Inc.

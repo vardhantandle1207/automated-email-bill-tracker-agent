@@ -19,6 +19,11 @@ def test_ambiguous_numeric_date_yields_both_readings():
     assert found == {date(2026, 10, 12), date(2026, 12, 10)}
 
 
+def test_hyphenated_named_month_dates():
+    found = {d for d, _ in dates_mentioned("Bill period: 26-Aug-2026 to 25-Sep-2026\nPay by: 18-Oct-2026")}
+    assert found == {date(2026, 8, 26), date(2026, 9, 25), date(2026, 10, 18)}
+
+
 def test_named_month_dates():
     found = {d for d, _ in dates_mentioned("Payment due: October 15, 2026\nPaid on 28 September 2026")}
     assert found == {date(2026, 10, 15), date(2026, 9, 28)}
@@ -44,6 +49,18 @@ def test_regex_extract_reads_autopay(emails):
     assert regex_extract(emails["aws.txt"])["autopay"] is True
     assert regex_extract(emails["electricity.txt"])["autopay"] is False
     assert regex_extract(emails["netflix.txt"])["autopay"] is False
+
+
+def test_regex_extract_is_bill(emails):
+    assert regex_extract(emails["hdfc_credit_card.txt"])["is_bill"] is True
+    for name in ("amazon_promo.txt", "flipkart_shipping.txt", "hdfc_txn_alert.txt", "newsletter.txt"):
+        assert regex_extract(emails[name])["is_bill"] is False, name
+
+
+def test_regex_extract_picks_the_total_among_several_amounts(emails):
+    assert regex_extract(emails["jio_postpaid.txt"])["amount"] == 799.0
+    assert regex_extract(emails["hdfc_credit_card.txt"])["amount"] == 23415.6
+    assert regex_extract(emails["digitalocean.txt"])["amount"] == 18.4
 
 
 def test_regex_extract_fields(emails):

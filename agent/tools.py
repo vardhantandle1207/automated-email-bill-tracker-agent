@@ -180,13 +180,15 @@ BatchExtractor = Callable[[list[str], Optional[list[str]]], list[Result]]
 
 def _record(fields: InvoiceFields) -> dict:
     return {
+        "is_bill": fields.is_bill,
         "vendor": fields.vendor,
         "amount": fields.amount,
         "currency": fields.currency,
         "due_date": fields.due_date,
         "paid": fields.paid,
         "autopay": fields.autopay,
-        "amount_base": to_base(fields.amount, fields.currency),
+        # A non-bill's amount/currency are placeholders, so don't let them fail conversion.
+        "amount_base": to_base(fields.amount, fields.currency) if fields.is_bill else 0.0,
         "base_currency": BASE_CURRENCY,
     }
 
@@ -254,8 +256,9 @@ def extract_invoice(email_text: str) -> dict:
         email_text: The full plain-text body of a receipt or invoice email.
 
     Returns:
-        dict with keys: vendor, amount, currency, due_date, paid, autopay,
-        amount_base, base_currency.
+        dict with keys: is_bill, vendor, amount, currency, due_date, paid,
+        autopay, amount_base, base_currency. If is_bill is False the email is not
+        a bill (promotion, newsletter, shipping update, ...): skip it.
     """
     return _extract(email_text)
 
@@ -282,11 +285,13 @@ def verify_many(records: list[Result], email_texts: list[str],
                 extract_many: Optional[BatchExtractor] = None) -> list[Result]:
     """verify() for a whole batch: every re-extraction goes out together in ONE request.
 
-    Failed entries pass through unchanged. If the retry request itself fails, the
-    first attempts are kept and their issues leave them needs_review.
+    Failed entries and non-bills pass through without a check or retry. If the
+    retry request itself fails, the first attempts are kept and their issues
+    leave them needs_review.
     """
     extract_many = extract_many or _extract_many
-    issues = [find_issues(r, t) if isinstance(r, dict) else [] for r, t in zip(records, email_texts)]
+    issues = [find_issues(r, t) if isinstance(r, dict) and r.get("is_bill", True) else []
+              for r, t in zip(records, email_texts)]
     todo = [i for i, found in enumerate(issues) if found]
     retries: dict[int, Result] = {}
     if todo:
@@ -413,6 +418,9 @@ def log_to_sheet(record: dict) -> dict:
         record: A verified record, optionally merged with flag_anomalies output.
 
     Returns:
-        {"logged": bool}; False means the bill was already in the sheet and was skipped.
+        {"logged": bool}; False means the bill was already in the sheet, or the
+        record is not a bill (is_bill False), and nothing was written.
     """
+    if not record.get("is_bill", True):
+        return {"logged": False}
     return {"logged": append_row(record)}

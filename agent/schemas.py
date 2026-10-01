@@ -10,12 +10,22 @@ from pydantic import BaseModel, Field
 
 
 class InvoiceFields(BaseModel):
+    is_bill: bool = Field(
+        default=True,
+        description="True if the email is a bill, invoice, statement with an amount due, or a "
+        "receipt/renewal notice for a recurring service or subscription. False for anything "
+        "else: promotions and sales, newsletters, shipping or delivery updates, card "
+        "transaction alerts, and price-change notices. If False, the other fields are "
+        "ignored (use vendor of the sender, amount 0, currency INR).",
+    )
     vendor: str = Field(description="The company or service that issued the bill, e.g. 'Netflix'")
-    amount: float = Field(description="Numeric amount due, no currency symbol or commas")
+    amount: float = Field(description="Numeric total amount due or charged, no currency symbol or commas")
     currency: str = Field(description="ISO 4217 code inferred from the email, e.g. INR, USD, EUR")
     due_date: Optional[str] = Field(
         default=None,
-        description="Due date as YYYY-MM-DD, or null if the email states none",
+        description="YYYY-MM-DD date by which this bill must be paid or will be charged. "
+        "For a receipt of a recurring subscription, use the next billing or renewal date "
+        "written in the email. null only if the email states no such date.",
     )
     paid: bool = Field(
         default=False,

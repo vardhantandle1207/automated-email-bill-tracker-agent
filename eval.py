@@ -100,7 +100,7 @@ def _field_ok(field: str, got, want: str) -> bool:
     if field == "vendor":
         g, w = vendor_key(got), vendor_key(want)
         return len(g) >= 3 and (g == w or g in w or w in g)
-    if field in ("paid", "autopay"):
+    if field in ("is_bill", "paid", "autopay"):
         return bool(got) == (want.strip().lower() in ("true", "1", "yes"))
     return (got or "") == (want or "")
 
@@ -144,8 +144,9 @@ def main() -> None:
     emails = [e for e in inbox if e["id"] in truth]
     fields = [f for f in FIELDS if f in next(iter(truth.values()))]
 
-    before = {f: 0 for f in fields} | {"ALL FIELDS": 0}
-    after = dict(before)
+    # [correct, scored] per field. Non-bills are scored on is_bill alone: their other fields are placeholders.
+    before = {f: [0, 0] for f in fields} | {"ALL FIELDS": [0, 0]}
+    after = {f: [0, 0] for f in before}
     counts = {kind: [0, 0, 0] for kind in ("overdue", "above_trend", "any flag")}  # tp, fp, fn
     corrected = review = labelled = 0
     details, errors = [], []
@@ -162,19 +163,26 @@ def main() -> None:
         if isinstance(final, Exception):  # reported separately, not scored
             errors.append(f"{email['id']}: {type(final).__name__}: {final}")
             continue
+        scored = fields if _field_ok("is_bill", True, gt.get("is_bill", "true")) else ["is_bill"]
         for tally, rec in ((before, first), (after, final)):
-            oks = [_field_ok(f, rec.get(f), gt[f]) for f in fields]
-            for f, ok in zip(fields, oks):
-                tally[f] += ok
-            tally["ALL FIELDS"] += all(oks)
+            oks = [_field_ok(f, rec.get(f), gt[f]) for f in scored]
+            for f, ok in zip(scored, oks):
+                tally[f][0] += ok
+                tally[f][1] += 1
+            tally["ALL FIELDS"][0] += all(oks)
+            tally["ALL FIELDS"][1] += 1
         corrected += final["corrected"]
         review += final["needs_review"]
-        wrong = [f"{f}={final.get(f)!r} (want {gt[f]!r})" for f in fields if not _field_ok(f, final.get(f), gt[f])]
+        wrong = [f"{f}={final.get(f)!r} (want {gt[f]!r})" for f in scored if not _field_ok(f, final.get(f), gt[f])]
 
         flags = "-"
         if label := labels.get(email["id"]):
             labelled += 1
-            pred = detect_anomalies(final, seed.get(vendor_key(final["vendor"]), []), date.fromisoformat(label["as_of"]))
+            if final.get("is_bill", True):
+                pred = detect_anomalies(final, seed.get(vendor_key(final["vendor"]), []),
+                                        date.fromisoformat(label["as_of"]))
+            else:  # the pipeline skips non-bills, so they are never flagged
+                pred = {"flagged": False, "reasons": [], "overdue": False, "above_trend": False}
             want_overdue, want_above = label["overdue"] == "1", label["above_trend"] == "1"
             for kind, p, w in (("overdue", pred["overdue"], want_overdue),
                                ("above_trend", pred["above_trend"], want_above),
@@ -196,7 +204,8 @@ def main() -> None:
              f" in {cache_stats['requests']} Gemini request(s)") if cache_stats else ""
     print(f"\nExtraction accuracy  (extractor={args.extractor}{model}, n={n} scored emails{cache})\n")
     _table(["Field", "Before verify", "After verify"],
-           [[f, _pct(before[f], n), _pct(after[f], n)] for f in before])
+           [[f, _pct(*before[f]), _pct(*after[f])] for f in before])
+    print("(is_bill and ALL FIELDS are over every email; the other fields over the labelled bills only)")
     print(f"\nverify: {corrected} record(s) corrected by re-extraction, {review} still flagged needs_review")
 
     print(f"\nAnomaly detection  (n={labelled} labelled, history={args.history})\n")

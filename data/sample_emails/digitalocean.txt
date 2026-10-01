@@ -1,0 +1,17 @@
+From: DigitalOcean <support@digitalocean.com>
+Subject: Your DigitalOcean receipt for September 2026
+
+Hi,
+
+Thanks for using DigitalOcean. Your payment of $18.40 has been received.
+
+Total: $18.40
+Payment date: October 1, 2026
+Next billing date: November 1, 2026
+
+Usage breakdown:
+  Droplets   $14.00
+  Volumes     $2.40
+  Snapshots   $2.00
+
+DigitalOcean

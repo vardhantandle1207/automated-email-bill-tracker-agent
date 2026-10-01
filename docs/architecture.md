@@ -50,6 +50,12 @@ than prose. `paid` means the email confirms the charge already happened;
 table by default or, with `FX_SOURCE=live`, the day's ECB rates from Frankfurter
 (fetched once a day, with the static table as fallback).
 
+**Bill filter.** `is_bill` is the first field in the schema, so the model
+decides whether the email is a bill at all before it fills anything else in.
+Non-bills skip verify (their other fields are placeholders, so a retry would be
+wasted), flagging, history and the sheet. The pipeline returns them under
+`skipped`.
+
 **Batching.** The batch pipeline and eval send every email in one Gemini
 request (each in its own `=== EMAIL n ===` block, with `response_schema` a list of
 `BatchInvoice`, i.e. `InvoiceFields` + `email_id`). Results are matched back by
@@ -91,8 +97,9 @@ Every reason quotes its inputs, e.g.
 Sheet columns: `logged_at, vendor, amount_base, base_currency, due_date, paid,
 flagged, flag_reasons, needs_review, source_id, autopay`. (`autopay` was added
 last so an existing sheet's columns stay aligned. Add the header cell by hand
-if your sheet predates it.) The row is deduplicated on
-`(vendor_key, due_date)`.
+if your sheet predates it.) Rows are deduplicated on `(vendor_key, due_date)`.
+An undated bill falls back to its `source_id`, so two undated monthly receipts
+from one vendor are both kept, while a re-run of the same email is still skipped.
 
 **Hosting.** One Cloud Run service, with Cloud Scheduler calling `POST /run` daily.
 The service account needs Vertex AI user, Firestore user, and Secret Manager

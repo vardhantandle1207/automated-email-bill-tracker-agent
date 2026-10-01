@@ -12,7 +12,7 @@ from typing import Optional
 
 from .currency import BASE_CURRENCY, to_base
 
-FIELDS = ("vendor", "amount", "currency", "due_date", "paid", "autopay")
+FIELDS = ("is_bill", "vendor", "amount", "currency", "due_date", "paid", "autopay")
 
 _CURRENCY_MARKERS = {
     "INR": r"₹|\bRs\.?|\bINR\b",
@@ -24,7 +24,8 @@ _NUM = r"\d{1,3}(?:,\d{2,3})+(?:\.\d+)?|\d+(?:\.\d+)?"
 _MONEY_WORDS = re.compile(r"amount|total|due|charged|payable|bill|balance", re.I)
 _DUE_WORDS = re.compile(r"due|next billing|pay by|payable by|renews?", re.I)
 _PAID_WORDS = re.compile(
-    r"\b(?:was|been) (?:charged|paid|received)\b|payment received|thank you for your payment", re.I
+    r"\b(?:was|been) (?:charged|paid|received)\b|payment received|received (?:your )?payment|"
+    r"thank you for your payment", re.I
 )
 _AUTOPAY_WORDS = re.compile(
     r"\b(?:automatically|auto-?)\s*(?:be\s+)?(?:charged|debited|deducted|paid)\b|"
@@ -34,7 +35,7 @@ _AUTOPAY_WORDS = re.compile(
 )
 _MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 _MON = "|".join(_MONTHS)
-_DMY_NAME = re.compile(rf"\b(\d{{1,2}})(?:st|nd|rd|th)?\s+({_MON})[a-z]*\.?,?\s+(\d{{4}})\b", re.I)
+_DMY_NAME = re.compile(rf"\b(\d{{1,2}})(?:st|nd|rd|th)?[\s-]+({_MON})[a-z]*\.?,?[\s-]+(\d{{4}})\b", re.I)
 _MDY_NAME = re.compile(rf"\b({_MON})[a-z]*\.?\s+(\d{{1,2}})\b(?:st|nd|rd|th)?,?\s+(\d{{4}})\b", re.I)
 _ISO = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 _NUMERIC = re.compile(r"\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\b")
@@ -125,15 +126,18 @@ def regex_extract(email_text: str, hint: str = "") -> dict:
     """No-LLM baseline extractor with the same output shape as extract_invoice.
 
     Vendor = From-header display name; amount = first currency-marked number on a
-    money line; due_date = first date on a due/next-billing line. `hint` is ignored
+    money line; due_date = first date on a due/next-billing line; is_bill = there is
+    a currency-marked number on a money line (amount/total/due/...). `hint` is ignored
     (accepted so it can stand in for the Gemini extractor inside verify).
     """
     sender = re.search(r"^From:\s*\"?([^<\"\n]+?)\"?\s*<", email_text, re.M)
     mentions = money_mentions(email_text)
-    best = next((m for m in mentions if _MONEY_WORDS.search(m[2])), mentions[0] if mentions else None)
+    billed = next((m for m in mentions if _MONEY_WORDS.search(m[2])), None)
+    best = billed or (mentions[0] if mentions else None)
     amount, currency = (best[0], best[1]) if best else (0.0, BASE_CURRENCY)
     due = next((d for d, line in dates_mentioned(email_text) if _DUE_WORDS.search(line)), None)
     return {
+        "is_bill": billed is not None,
         "vendor": sender.group(1).strip() if sender else "",
         "amount": amount,
         "currency": currency,

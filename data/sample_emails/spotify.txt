@@ -1,0 +1,14 @@
+From: Spotify <no-reply@spotify.com>
+Subject: Your Spotify Premium receipt
+
+Hi there,
+
+Payment received. Thanks for being Premium!
+
+Plan: Premium Individual
+Date paid: 10 September 2026
+Amount paid: ₹119.00
+Payment method: UPI
+Next billing date: 10 October 2026
+
+Spotify

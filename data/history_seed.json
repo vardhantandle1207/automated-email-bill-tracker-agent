@@ -13,5 +13,30 @@
     {"due_date": "2026-07-15", "amount_base": 3320.0, "source_id": "seed"},
     {"due_date": "2026-08-15", "amount_base": 3486.0, "source_id": "seed"},
     {"due_date": "2026-09-15", "amount_base": 3403.0, "source_id": "seed"}
+  ],
+  "jio": [
+    {"due_date": "2026-07-18", "amount_base": 699.0, "source_id": "seed"},
+    {"due_date": "2026-08-18", "amount_base": 699.0, "source_id": "seed"},
+    {"due_date": "2026-09-18", "amount_base": 699.0, "source_id": "seed"}
+  ],
+  "spotify": [
+    {"due_date": "2026-07-10", "amount_base": 119.0, "source_id": "seed"},
+    {"due_date": "2026-08-10", "amount_base": 119.0, "source_id": "seed"},
+    {"due_date": "2026-09-10", "amount_base": 119.0, "source_id": "seed"}
+  ],
+  "hmwssb": [
+    {"due_date": "2026-07-25", "amount_base": 360.0, "source_id": "seed"},
+    {"due_date": "2026-08-25", "amount_base": 410.0, "source_id": "seed"},
+    {"due_date": "2026-09-25", "amount_base": 395.0, "source_id": "seed"}
+  ],
+  "digitalocean": [
+    {"due_date": "2026-08-01", "amount_base": 996.0, "source_id": "seed"},
+    {"due_date": "2026-09-01", "amount_base": 1020.0, "source_id": "seed"},
+    {"due_date": "2026-10-01", "amount_base": 979.0, "source_id": "seed"}
+  ],
+  "hdfcbank": [
+    {"due_date": "2026-07-08", "amount_base": 17800.0, "source_id": "seed"},
+    {"due_date": "2026-08-08", "amount_base": 19200.0, "source_id": "seed"},
+    {"due_date": "2026-09-08", "amount_base": 18500.0, "source_id": "seed"}
   ]
 }

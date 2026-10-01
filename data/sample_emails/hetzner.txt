@@ -1,0 +1,13 @@
+From: Hetzner Online GmbH <billing@hetzner.com>
+Subject: Invoice R0021876543
+
+Dear Sir or Madam,
+
+please find attached your invoice R0021876543 dated 01.10.2026.
+
+Invoice total: € 5.83 (incl. VAT)
+
+The amount will be debited automatically from your credit card in the next few days.
+
+Kind regards
+Hetzner Online GmbH

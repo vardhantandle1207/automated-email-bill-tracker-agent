@@ -30,13 +30,16 @@ def fake_gemini(monkeypatch, emails):
     return requests
 
 
+TRIO = ("aws.txt", "electricity.txt", "netflix.txt")
+
+
 def test_whole_batch_costs_two_requests(fake_gemini, emails):
-    texts = list(emails.values())
+    texts = [emails[name] for name in TRIO]
     results = tools.extract_and_verify(texts)
     assert len(fake_gemini) == 2  # one for all emails, one for the single retry
     assert fake_gemini[0].count("\n=== EMAIL ") == 3 and fake_gemini[1].count("\n=== EMAIL ") == 1
     assert "NOTE FOR EMAIL 1: a previous extraction was rejected because: vendor 'Acme'" in fake_gemini[1]
-    aws = results[list(emails).index("aws.txt")]
+    aws = results[0]
     assert aws["corrected"] and not aws["needs_review"]
     assert [r["needs_review"] for r in results] == [False, False, False]
 
@@ -49,7 +52,7 @@ def test_clean_batch_costs_one_request(fake_gemini, emails):
 
 def test_batch_size_splits_requests(fake_gemini, emails, monkeypatch):
     monkeypatch.setenv("GEMINI_BATCH_SIZE", "2")
-    tools._extract_many(list(emails.values()))
+    tools._extract_many([emails[name] for name in TRIO])
     assert [r.count("\n=== EMAIL ") for r in fake_gemini] == [2, 1]
 
 
@@ -59,6 +62,13 @@ def test_skipped_email_fails_alone(monkeypatch, emails):
     first, second = tools._extract_many([emails["aws.txt"], emails["electricity.txt"]])
     assert isinstance(first, ValueError) and "no result for email 1" in str(first)
     assert second["vendor"] == "TSSPDCL" and second["amount_base"] == 1240.5
+
+
+def test_non_bills_are_not_verified_or_retried(fake_gemini, emails):
+    results = tools.extract_and_verify([emails["amazon_promo.txt"], emails["flipkart_shipping.txt"]])
+    assert [r["is_bill"] for r in results] == [False, False]
+    assert len(fake_gemini) == 1  # placeholder fields of a non-bill never trigger a retry
+    assert not any(r["needs_review"] for r in results)
 
 
 def test_failed_retry_request_keeps_first_attempt(emails):

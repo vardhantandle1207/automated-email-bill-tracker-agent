@@ -1,0 +1,13 @@
+From: HMWSSB <ebill@hyderabadwater.gov.in>
+Subject: Water bill for CAN 0XXXXX45
+
+Dear Consumer,
+
+Your water bill has been generated.
+
+CAN: 0XXXXX45
+Consumption: 18 KL
+Bill amount: Rs.384.00
+Due date: 25 October 2026
+
+HMWSSB

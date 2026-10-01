@@ -5,6 +5,10 @@ vendor / amount / currency / due date / autopay, checks the extraction against t
 normalizes to a base currency, flags overdue or above-trend bills with a
 checkable explanation, and logs everything to a Google Sheet.
 
+Emails that aren't bills (promotions, newsletters, shipping updates, card
+alerts, price-change notices) come back with `is_bill: false` and are listed under
+`skipped`. They never reach the sheet or the history.
+
 **Safety boundary by design:** the agent has read-only inbox access
 (`gmail.readonly`), and its only writes are *appends*: to a sheet and to its own
 history store. Paying, deleting, and any irreversible action sit *outside* its
@@ -134,8 +138,15 @@ switching `GEMINI_MODEL` re-extracts. On the free tier, consider
 `GEMINI_RETRY_ATTEMPTS=2` so retries of an overloaded (503) request don't use up
 the daily quota.
 
-The eval runs extract → verify → anomaly detection over every email in
-`data/sample_emails/` and reports:
+The eval set is 18 synthetic emails in `data/sample_emails/`: 13 bills and 5
+non-bills. They cover the hard cases:
+- several amounts in one email (subtotal/GST/total, total vs. minimum due, a usage breakdown)
+- INR/USD/EUR/GBP
+- `DD/MM` vs `MM/DD` dates and dates like `18-Oct-2026`
+- paid receipts, autopay, and undated invoices
+- promotions, a price-change notice, a shipping update, a card transaction alert, and a newsletter
+
+The eval runs extract → verify → anomaly detection over all of them and reports:
 
 - **(a) per-field extraction accuracy**, against `data/ground_truth.csv`
 - **(b) accuracy before vs. after `verify`**, plus how many records were corrected or left `needs_review`
@@ -146,11 +157,14 @@ Anomalies are judged against `data/history_seed.json` at each label row's
 `as_of` date.
 
 Matching rules: amount within 0.01; vendor equal or contained after lowercasing
-and stripping non-alphanumerics; currency, due_date, paid and autopay exact.
+and stripping non-alphanumerics; currency, due_date, paid, autopay and is_bill
+exact. Non-bills are scored on `is_bill` only. For receipts, `due_date` is the
+next billing date written in the email.
 
 To add a labelled email:
 1. Drop `name.txt` (with `From:`/`Subject:` headers) into `data/sample_emails/`.
-2. Add a row to `ground_truth.csv` (`file,vendor,amount,currency,due_date,paid,autopay`).
+2. Add a row to `ground_truth.csv` (`file,vendor,amount,currency,due_date,paid,autopay,is_bill`).
+   For a non-bill, leave everything but `is_bill` (`false`) empty.
 3. Add a row to `anomaly_labels.csv` (`file,as_of,overdue,above_trend,notes`).
 4. If you want above-trend cases, add that vendor's past months to `history_seed.json`.
 

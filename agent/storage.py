@@ -21,8 +21,10 @@ SHEET_COLUMNS = [
 ]
 
 
-def _dedupe_key(vendor: str, due_date) -> tuple[str, str]:
-    return vendor_key(vendor), due_date or ""
+def _dedupe_key(vendor: str, due_date, source_id) -> tuple[str, str]:
+    """(vendor, due_date). Undated bills fall back to the email id, so two undated
+    receipts from one vendor are both kept while re-running the same email is not."""
+    return vendor_key(vendor), due_date or f"source:{source_id or ''}"
 
 
 def _row(record: dict) -> list:
@@ -42,8 +44,9 @@ def _csv_safe(value):
 
 
 def append_row(record: dict) -> bool:
-    """Append one bill row unless (vendor, due_date) is already logged. Returns True if appended."""
-    key = _dedupe_key(record["vendor"], record.get("due_date"))
+    """Append one bill row unless (vendor, due_date) is already logged (undated: same
+    vendor and email). Returns True if appended."""
+    key = _dedupe_key(record["vendor"], record.get("due_date"), record.get("source_id"))
     sheet_id = os.environ.get("GOOGLE_SHEET_ID")
     if sheet_id:
         import google.auth
@@ -55,8 +58,8 @@ def append_row(record: dict) -> bool:
         if not rows:
             ws.append_row(SHEET_COLUMNS)
             rows = [SHEET_COLUMNS]
-        v, d = rows[0].index("vendor"), rows[0].index("due_date")
-        if any(_dedupe_key(r[v], r[d]) == key for r in rows[1:] if len(r) > max(v, d)):
+        v, d, s = (rows[0].index(c) for c in ("vendor", "due_date", "source_id"))
+        if any(_dedupe_key(r[v], r[d], r[s]) == key for r in rows[1:] if len(r) > max(v, d, s)):
             return False
         ws.append_row(_row(record), value_input_option="RAW")  # RAW: never evaluate as formulas
         return True
@@ -66,7 +69,7 @@ def append_row(record: dict) -> bool:
     if os.path.exists(path):
         with open(path, newline="", encoding="utf-8") as f:
             rows = list(csv.DictReader(f))
-    if any(_dedupe_key(r["vendor"], r["due_date"]) == key for r in rows):
+    if any(_dedupe_key(r["vendor"], r["due_date"], r["source_id"]) == key for r in rows):
         return False
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "a", newline="", encoding="utf-8") as f:

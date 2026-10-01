@@ -24,6 +24,13 @@ def test_append_writes_header_and_dedupes_on_vendor_and_due_date(isolated_env):
     assert [r["due_date"] for r in rows] == ["2026-10-28", "2026-11-28"]
 
 
+def test_undated_bills_dedupe_on_email_id(isolated_env):
+    assert append_row(record(vendor="GitHub", due_date=None, source_id="sep")) is True
+    assert append_row(record(vendor="GitHub", due_date=None, source_id="oct")) is True  # next month's receipt
+    assert append_row(record(vendor="GitHub", due_date=None, source_id="sep")) is False  # same email again
+    assert [r["source_id"] for r in read_csv(isolated_env / "bills.csv")] == ["sep", "oct"]
+
+
 def test_csv_cells_cannot_become_formulas(isolated_env):
     append_row(record(vendor="=HYPERLINK(\"http://x\")", reasons=["-1 above"]))
     row = read_csv(isolated_env / "bills.csv")[0]

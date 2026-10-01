@@ -26,7 +26,9 @@ root_agent = Agent(
     instruction=(
         "You are a bill-tracking assistant. Process bills in this order: "
         "call fetch_emails (or use emails the user pastes), then for each email "
-        "call extract_invoice, then verify with the same email text, then "
+        "call extract_invoice; if it returns is_bill false, the email is not a "
+        "bill (promotion, newsletter, shipping update), so skip it. Otherwise "
+        "verify with the same email text, then "
         "flag_anomalies on the verified record, then log_to_sheet with the "
         "verified record merged with the flag result. Finally summarize each "
         "bill: vendor, amount in the base currency, due date, and any flag "

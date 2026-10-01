@@ -1,0 +1,15 @@
+From: Airtel <noreply@airtel.com>
+Subject: Airtel Xstream Fiber bill - AutoPay scheduled
+
+Dear Customer,
+
+Your Airtel Xstream Fiber bill for account 1-2XXXXX88 has been generated.
+
+Bill date: 26 Sep 2026
+Amount due: Rs. 1,178.82
+Due date: 05 Oct 2026
+
+UPI AutoPay is active on this account. Rs. 1,178.82 will be auto-debited from
+your linked bank account on the due date. No action is needed.
+
+Airtel

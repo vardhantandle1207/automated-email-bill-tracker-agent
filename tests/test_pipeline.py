@@ -18,9 +18,13 @@ def seeded_history(isolated_env):
 
 def test_batch_logs_flags_and_dedupes(offline_extractor, seeded_history, monkeypatch, isolated_env):
     monkeypatch.setenv("MOCK_INBOX", "1")
-    first = {r["source_id"]: r for r in run_batch()["records"]}
-    assert set(first) == {"aws.txt", "electricity.txt", "netflix.txt"}
+    run = run_batch()
+    first = {r["source_id"]: r for r in run["records"]}
+    skipped = {s["id"] for s in run["skipped"]}
+    assert {"amazon_promo.txt", "flipkart_shipping.txt", "hdfc_txn_alert.txt", "newsletter.txt"} <= skipped
+    assert {"aws.txt", "electricity.txt", "netflix.txt", "hdfc_credit_card.txt"} <= set(first)
     assert all(r["logged"] for r in first.values())
+    assert first["hdfc_credit_card.txt"]["above_trend"] and first["digitalocean.txt"]["above_trend"]
     assert first["electricity.txt"]["above_trend"]
     assert first["aws.txt"]["autopay"] and not first["aws.txt"]["flagged"]
     assert not first["netflix.txt"]["flagged"]
@@ -53,6 +57,14 @@ def test_failed_extraction_request_logs_nothing(monkeypatch, emails, isolated_en
     assert not (isolated_env / "bills.csv").exists()
 
 
+def test_non_bills_never_reach_the_sheet(offline_extractor, emails, isolated_env):
+    result = run_batch([{"id": "promo", "text": emails["amazon_promo.txt"]}])
+    assert result["records"] == [] and result["skipped"] == [{"id": "promo", "vendor": "Amazon.in"}]
+    assert tools.log_to_sheet({"is_bill": False, "vendor": "Amazon.in", "amount_base": 0.0}) == {"logged": False}
+    assert not (isolated_env / "bills.csv").exists()
+    assert not (isolated_env / "history.json").exists()
+
+
 def test_log_to_sheet_reports_duplicates(offline_extractor, emails):
     record = tools.verify(tools.extract_invoice(emails["aws.txt"]), emails["aws.txt"])
     assert tools.log_to_sheet(record) == {"logged": True}
@@ -67,4 +79,5 @@ def test_http_run_endpoint(offline_extractor, emails):
     body = client.post("/run", json={"emails": [{"id": "e1", "text": emails["electricity.txt"]}]}).json()
     assert body["processed"] == 1 and body["errors"] == []
     assert body["records"][0]["vendor"] == "TSSPDCL"
-    assert client.post("/run", json={"mock": True}).json()["processed"] == 3
+    mock = client.post("/run", json={"mock": True}).json()
+    assert mock["processed"] + len(mock["skipped"]) == 18 and mock["errors"] == []

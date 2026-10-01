@@ -34,6 +34,9 @@ def main() -> None:
             print(f"  NEEDS REVIEW: {issue}")
         for reason in r["reasons"]:
             print(f"  FLAG: {reason}")
+    if result["skipped"]:
+        print(f"\nSkipped {len(result['skipped'])} non-bill email(s): "
+              + ", ".join(f"{s['id']} ({s['vendor']})" for s in result["skipped"]))
     for e in result["errors"]:
         print(f"\n!!! {e['id']}: {e['error']}")
 
