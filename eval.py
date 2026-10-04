@@ -4,8 +4,8 @@ We run the agent on sample emails whose correct answers we wrote by hand in
 data/labels.csv, then count how often it was right.
 
     python eval.py                                      # Gemini
-    python eval.py --provider openrouter                # OpenRouter, default free model
-    python eval.py --provider openrouter --model <id>   # any model on OpenRouter
+    python eval.py --provider omniroute                 # OmniRoute, which picks the model ("auto")
+    python eval.py --provider omniroute --model <id>    # a specific model behind OmniRoute
 """
 
 import argparse

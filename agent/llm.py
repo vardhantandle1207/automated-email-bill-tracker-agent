@@ -4,8 +4,9 @@ An LLM is just a web API. We send it the conversation so far and the list of
 tools it may use. It sends back ONE new message. That message is either plain
 text, or a request to call one or more tools.
 
-Gemini and OpenRouter both understand the same "OpenAI-style" chat format, so
+Gemini and OmniRoute both understand the same "OpenAI-style" chat format, so
 changing provider only changes the URL, the key and the model name.
+(OmniRoute is a free gateway you run yourself: one endpoint in front of many LLMs.)
 """
 
 import os
@@ -21,11 +22,12 @@ PROVIDERS = {
         "model_env": "GEMINI_MODEL",
         "default_model": "gemini-3.6-flash",
     },
-    "openrouter": {
-        "url": "https://openrouter.ai/api/v1/chat/completions",
-        "key_env": "OPENROUTER_API_KEY",
-        "model_env": "OPENROUTER_MODEL",
-        "default_model": "google/gemma-4-31b-it:free",
+    "omniroute": {
+        "url": "http://localhost:20128/v1/chat/completions",  # OmniRoute running on your machine
+        "url_env": "OMNIROUTE_URL",                           # set this if yours runs somewhere else
+        "key_env": "OMNIROUTE_API_KEY",
+        "model_env": "OMNIROUTE_MODEL",
+        "default_model": "auto",                              # let OmniRoute pick the model
     },
 }
 BUSY = (429, 500, 502, 503, 504)  # "rate limited" or "server overloaded": worth retrying
@@ -33,8 +35,9 @@ BUSY = (429, 500, 502, 503, 504)  # "rate limited" or "server overloaded": worth
 
 def chat(messages: list[dict], tools: list[dict] | None = None) -> tuple[dict, int]:
     """Send the conversation to the LLM. Returns (its reply message, tokens used)."""
-    # Step 2: Read the provider settings and the API key from the environment.
+    # Step 2: Read the provider settings, its URL and the API key from the environment.
     provider = PROVIDERS[os.getenv("LLM_PROVIDER", "gemini")]
+    url = os.getenv(provider.get("url_env", ""), provider["url"])
     api_key = os.getenv(provider["key_env"])
     if not api_key:
         raise RuntimeError(f"Set {provider['key_env']} in your .env file (see .env.example)")
@@ -48,7 +51,7 @@ def chat(messages: list[dict], tools: list[dict] | None = None) -> tuple[dict, i
     #         (20s, 40s, 60s, 80s, 100s), then give up.
     for attempt in range(1, 7):
         response = requests.post(
-            provider["url"], headers={"Authorization": f"Bearer {api_key}"}, json=body, timeout=180
+            url, headers={"Authorization": f"Bearer {api_key}"}, json=body, timeout=180
         )
         if response.status_code not in BUSY or attempt == 6:
             break

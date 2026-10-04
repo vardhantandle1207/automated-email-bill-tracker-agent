@@ -21,7 +21,7 @@ Read the files in this order. Every file is split into `Step 1`, `Step 2`, ... c
 
 | # | Concept | File | What it means here |
 |---|---|---|---|
-| 1 | LLM | [agent/llm.py](agent/llm.py) | One function, `chat()`, that sends the conversation to Gemini or OpenRouter and returns one reply |
+| 1 | LLM | [agent/llm.py](agent/llm.py) | One function, `chat()`, that sends the conversation to Gemini or OmniRoute and returns one reply |
 | 2 | Tools and tool calling | [agent/tools.py](agent/tools.py) | Three Python functions the LLM may ask us to run, plus their descriptions |
 | 3 | Short-term and long-term memory | [agent/memory.py](agent/memory.py) | Short-term: the conversation and emails of this run. Long-term: `data/bills.csv`, kept between runs |
 | 4 | Guardrails | [agent/guardrails.py](agent/guardrails.py) | Block prompt injection, reject values that are not in the email, limit the loop to 8 steps |
@@ -85,8 +85,8 @@ requests per minute, so a run can pause for 20 to 60 seconds while it waits.
 
 ```bash
 python eval.py                                      # Gemini
-python eval.py --provider openrouter                # OpenRouter (needs OPENROUTER_API_KEY in .env)
-python eval.py --provider openrouter --model <id>   # compare any model on OpenRouter
+python eval.py --provider omniroute                 # OmniRoute (needs OMNIROUTE_API_KEY in .env)
+python eval.py --provider omniroute --model <id>    # compare any model behind OmniRoute
 ```
 
 The eval set is 19 synthetic emails: 13 bills and 6 non-bills (a promotion, a
