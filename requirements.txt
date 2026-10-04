@@ -1,15 +1,10 @@
-google-adk>=2.0
-google-genai>=1.0
-pydantic>=2.0
+# the agent
+requests>=2.31
 python-dotenv>=1.0
-# fetch_emails (Gmail, read-only)
+# main.py (web service)
+fastapi>=0.110
+uvicorn>=0.29
+# agent/gmail.py (optional: real Gmail inbox, read-only)
 google-api-python-client>=2.0
 google-auth>=2.0
 google-auth-oauthlib>=1.0
-# log_to_sheet
-gspread>=6.0
-# flag_anomalies history
-google-cloud-firestore>=2.0
-# main.py (Cloud Run)
-fastapi>=0.110
-uvicorn[standard]>=0.29

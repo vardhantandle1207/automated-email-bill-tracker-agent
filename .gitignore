@@ -2,14 +2,14 @@
 .env
 token.json
 credentials.json
-service-account*.json
-*-sa.json
-# local state written by the agent
+# files the agent writes
 data/bills.csv
-data/history.json
+logs/
 # python
 .venv/
 __pycache__/
 *.pyc
-# eval cache of Gemini outputs
+.pytest_cache/
+# old version of the code, kept locally only
+_old/
 data/.cache/

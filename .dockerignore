@@ -1,12 +1,12 @@
 .env
 token.json
 credentials.json
-service-account*.json
-*-sa.json
 data/bills.csv
-data/history.json
+logs/
 .venv/
 __pycache__/
+.pytest_cache/
 .git/
-docs/
+_old/
+tests/
 data/.cache/

@@ -1,50 +1,29 @@
-"""FastAPI entrypoint (Cloud Run).
+"""CONCEPT 9: DEPLOYMENT (the agent as a web service).
 
-POST /run  processes a batch end to end and returns the records with their flags:
-    {}                              -> fetch from Gmail (read-only)
-    {"mock": true}                  -> use data/sample_emails/
-    {"emails": [{"id", "text"}]}    -> process the given emails
+The Dockerfile starts this file. A scheduler, or you with curl, calls POST /run
+to make the agent process the inbox once.
 
-There is deliberately no endpoint that pays, deletes, or edits anything.
-Run locally:  uvicorn main:app --reload --port 8080
+    uvicorn main:app --port 8080
+    curl -X POST localhost:8080/run
 """
 
-from typing import Optional
-
 from dotenv import load_dotenv
+from fastapi import FastAPI
 
-load_dotenv()
+from agent.agent import run_agent
 
-from fastapi import FastAPI  # noqa: E402  (import after env is loaded)
-from pydantic import BaseModel  # noqa: E402
-
-from agent.pipeline import run_batch  # noqa: E402
-from agent.tools import load_sample_emails  # noqa: E402
-
-app = FastAPI(title="Bill & Subscription Tracker Agent")
+load_dotenv(".env")
+app = FastAPI(title="Bill Tracker Agent")
 
 
-class Email(BaseModel):
-    id: str
-    text: str
-
-
-class RunRequest(BaseModel):
-    emails: Optional[list[Email]] = None
-    mock: bool = False
-
-
-@app.get("/healthz")
-def healthz() -> dict:
+# Step 1: A cheap endpoint so the hosting platform can check the service is alive.
+@app.get("/health")
+def health() -> dict:
     return {"ok": True}
 
 
+# Step 2: The one real endpoint: run the agent once and return what it did.
+#         There is deliberately no endpoint that pays, deletes or edits anything.
 @app.post("/run")
-def run(req: Optional[RunRequest] = None) -> dict:
-    req = req or RunRequest()
-    if req.emails is not None:
-        emails = [e.model_dump() for e in req.emails]
-    else:
-        emails = load_sample_emails() if req.mock else None  # None -> fetch_emails()
-    result = run_batch(emails)
-    return {"processed": len(result["records"]), **result}
+def run() -> dict:
+    return run_agent()

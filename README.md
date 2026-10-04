@@ -1,242 +1,193 @@
-# Autonomous Bill & Subscription Tracker Agent
+# Bill Tracker Agent
 
-A ReAct agent (Gemini + Google ADK) that reads invoice emails, extracts the
-vendor / amount / currency / due date / autopay, checks the extraction against the email,
-normalizes to a base currency, flags overdue or above-trend bills with a
-checkable explanation, and logs everything to a Google Sheet.
+A small AI agent that reads your emails, finds the bills, checks them, flags the
+ones that are overdue or unusually high, and saves them to a log.
 
-Emails that aren't bills (promotions, newsletters, shipping updates, card
-alerts, price-change notices) come back with `is_bill: false` and are listed under
-`skipped`. They never reach the sheet or the history.
-
-**Safety boundary by design:** the agent has read-only inbox access
-(`gmail.readonly`), and its only writes are *appends*: to a sheet and to its own
-history store. Paying, deleting, and any irreversible action sit *outside* its
-toolset, and there is no auto-pay and no chatbot UI. The Google Sheet is the
-interface.
+It is written in plain Python with **no agent framework**, so every agentic
+concept is visible in about 700 lines of code that you can read in one sitting.
 
 ```
-fetch_emails -> extract_invoice -> verify -> flag_anomalies -> log_to_sheet
-   Gmail (RO)      Gemini           regex+retry   Firestore       Sheet (append)
+            ┌──────────────── the agent loop ────────────────┐
+ goal ─► PLAN ─► THINK (LLM) ─► ACT (run tools) ─► OBSERVE ──┘─► summary
+                                  │
+                 fetch_emails ────┤  read the inbox (read-only)
+                 check_bill ──────┤  verify against the email, convert to ₹, flag anomalies
+                 log_bill ────────┘  append one row to data/bills.csv
 ```
 
-See [docs/architecture.md](docs/architecture.md) for the diagram and design.
+## The 9 concepts, and where each one lives
 
-## Tools
+Read the files in this order. Every file is split into `Step 1`, `Step 2`, ... comments.
 
-| Tool | What it does |
-|---|---|
-| `fetch_emails()` | Gmail search (read-only scope) → `[{id, text}]`. `MOCK_INBOX=1` / `--mock` reads `data/sample_emails/` |
-| `extract_invoice(email_text)` | Gemini structured output into `InvoiceFields` (+ `amount_base` in INR). Batch runs use `extract_and_verify`: one request for all emails |
-| `verify(record, email_text)` | Checks amount / currency / vendor / date actually appear in the email; re-extracts once if not. Adds `corrected`, `issues`, `needs_review` |
-| `flag_anomalies(record)` | Overdue (past due, not paid, not on autopay) and above-trend (over N-month rolling avg by X%), with reasons that quote their numbers |
-| `log_to_sheet(record)` | Appends a row (logs `amount_base`), deduped on `(vendor, due_date)`; CSV fallback. Returns `{"logged": bool}` |
+| # | Concept | File | What it means here |
+|---|---|---|---|
+| 1 | LLM | [agent/llm.py](agent/llm.py) | One function, `chat()`, that sends the conversation to Gemini or OpenRouter and returns one reply |
+| 2 | Tools and tool calling | [agent/tools.py](agent/tools.py) | Three Python functions the LLM may ask us to run, plus their descriptions |
+| 3 | Short-term and long-term memory | [agent/memory.py](agent/memory.py) | Short-term: the conversation and emails of this run. Long-term: `data/bills.csv`, kept between runs |
+| 4 | Guardrails | [agent/guardrails.py](agent/guardrails.py) | Block prompt injection, reject values that are not in the email, limit the loop to 8 steps |
+| 5 | Observability | [agent/tracing.py](agent/tracing.py) | Every LLM call and tool call is printed and saved to `logs/trace.jsonl` with tokens and timing |
+| 6 | Planning | [agent/agent.py](agent/agent.py) | The LLM writes a numbered plan before it is given any tool |
+| 7 | Agent loop | [agent/agent.py](agent/agent.py) | Think, act, observe, and repeat until the LLM says it is done |
+| 8 | Evaluation | [eval.py](eval.py) | Runs the agent on 19 labelled emails and reports accuracy, precision, recall and cost |
+| 9 | Deployment | [main.py](main.py), [Dockerfile](Dockerfile) | The agent as a web service with one endpoint, `POST /run` |
 
-## Setup
+## Quick start
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env         # then paste your key from https://aistudio.google.com/apikey
+pip install -r requirements-dev.txt
+cp .env.example .env        # then paste a free key from https://aistudio.google.com/apikey
+python run.py               # runs on the 19 sample emails in data/sample_emails/
 ```
 
-Everything below the key is optional. With nothing configured, the agent runs
-fully locally: sample inbox → `data/bills.csv` + `data/history.json`.
+You will see each step as it happens, then the plan, the bills and the cost:
 
-### Gmail OAuth (read-only)
+```
+[   4.4s] llm       {"step": 0, ... "wants": "Here is my plan ..."}           <- PLAN
+[   7.5s] llm       {"step": 1, ... "wants": ["fetch_emails"]}                <- THINK
+[   7.5s] tool      {"step": 1, "name": "fetch_emails", ...}                  <- ACT
+[  21.5s] llm       {"step": 2, ... "wants": ["check_bill", "check_bill", ...]}
+[  25.1s] llm       {"step": 3, ... "wants": ["log_bill", "log_bill", ...]}
+...
+LIC of India: ₹12,450.00, due 2026-09-25 (logged)
+   FLAG  OVERDUE: was due 2026-09-25, 8 days ago, not paid and not on autopay
+...
+5 LLM calls, 27 tool calls, 30818 tokens
+```
 
-1. In [Google Cloud Console](https://console.cloud.google.com/), pick or create a project and
-   enable the **Gmail API**.
-2. **OAuth consent screen**: set user type External, publishing status Testing,
-   and add your own Gmail address as a test user. Add the scope
-   `https://www.googleapis.com/auth/gmail.readonly` and nothing else.
-3. **Credentials → Create credentials → OAuth client ID → Desktop app**.
-   Download the JSON as `credentials.json` in the repo root. It is gitignored.
-4. Run `python run.py` once. A browser opens for consent, and afterwards
-   `token.json` is written next to it (also gitignored).
+Open `data/bills.csv` to see the saved bills. Run it a second time and every bill
+says "already logged": that is long-term memory at work.
 
-The app only ever requests `gmail.readonly`, so the token cannot send, delete,
-label, or mark mail as read. Note that while the consent screen is in *Testing*
-status, Google expires refresh tokens after 7 days, so re-run step 4 when that
-happens (or publish the app for longer-lived tokens).
+To see "above trend" flags too, start with three months of past bills:
+`cp data/history_seed.csv data/bills.csv`, then run again.
 
-### Google Sheet (optional; the default is CSV)
+One run costs about 5 LLM requests. The free Gemini tier allows only a few
+requests per minute, so a run can pause for 20 to 60 seconds while it waits.
 
-1. Enable the **Google Sheets API**. Create a service account and download its
-   key as `service-account.json` (gitignored).
-2. Create a Sheet and share it with the service account's email as **Editor**.
-3. In `.env`, set `GOOGLE_SHEET_ID=<id from the sheet URL>` and
-   `GOOGLE_APPLICATION_CREDENTIALS=service-account.json`.
+## How one run works
 
-The header row is written on first append. Values are written `RAW`, so text from
-an email can never execute as a formula.
+1. **Plan.** The agent gets the goal "Find the bills in my inbox and log them" and
+   writes a numbered plan. No tools are offered yet, so it can only plan.
+2. **Fetch.** It calls `fetch_emails`. The input guardrail blocks any email that
+   tries to give the agent orders, and cuts very long emails.
+3. **Check.** It decides which emails are bills and calls `check_bill` for each
+   one, many in a single turn. The tool rejects any amount, vendor or currency
+   that is not really in the email, and the agent must fix it and try again. For
+   bills that pass, the tool converts the amount to rupees, looks up the vendor's
+   past bills in long-term memory, and flags the bill if it is:
+   - **overdue**: past its due date, not paid, and not on autopay
+   - **above trend**: more than 20% above the average of that vendor's last 3 bills
+4. **Log.** It calls `log_bill`, which appends the checked bill to `data/bills.csv`.
+   A bill that did not pass the check cannot be logged.
+5. **Summarise.** With no tools left to call, it writes a summary and the loop ends.
 
-### Firestore history (optional; the default is local JSON)
-
-Set `HISTORY_BACKEND=firestore` and `GOOGLE_CLOUD_PROJECT`, and make sure the
-credentials can access Firestore (Native mode). Documents live in
-`vendor_history/{vendor_key}`.
-
-To try the anomaly rules locally with some past months:
-`cp data/history_seed.json data/history.json`.
-
-### Exchange rates (optional; the default is a static table)
-
-`FX_SOURCE=live` converts with the day's ECB reference rates from the free
-[Frankfurter](https://frankfurter.dev) API (no key). Rates are fetched once per
-process per day. If the fetch fails, or a currency is missing, the static table
-in `agent/currency.py` is used for that day. Live rates are recommended in prod.
-The default stays static so runs are reproducible, and `eval.py` always uses
-static rates because the labels and `history_seed.json` were made with them.
-
-## Run
+## Evaluation
 
 ```bash
-python run.py --mock          # full pipeline over data/sample_emails/, no Gmail needed
-python run.py                 # full pipeline over your Gmail (read-only)
-adk run agent                 # ADK ReAct loop over the same five tools
-uvicorn main:app --port 8080  # HTTP: curl -X POST localhost:8080/run -d '{"mock": true}' -H 'Content-Type: application/json'
-python run_day1.py            # Day 1: extract_invoice only
+python eval.py                                      # Gemini
+python eval.py --provider openrouter                # OpenRouter (needs OPENROUTER_API_KEY in .env)
+python eval.py --provider openrouter --model <id>   # compare any model on OpenRouter
 ```
+
+The eval set is 19 synthetic emails: 13 bills and 6 non-bills (a promotion, a
+newsletter, a shipping update, a card alert, a price-change notice and a fake
+invoice containing a prompt injection). The correct answers are in
+[data/labels.csv](data/labels.csv). The eval runs in a sandbox, so it never
+touches your real `data/bills.csv`.
+
+Result with `gemini-3.6-flash`:
+
+| Metric | Score |
+|---|---|
+| Is it a bill? | 19/19 |
+| Vendor, amount, currency, due date, paid, autopay | 13/13 each |
+| Overdue flag | precision 1.00, recall 1.00 |
+| Above-trend flag | precision 1.00, recall 1.00 |
+| Cost | 6 LLM calls, 27 tool calls, about 36,500 tokens |
+
+The emails are synthetic and few, so treat this as a regression check, not as
+proof of accuracy on a real inbox.
 
 ## Tests
 
 ```bash
-pip install -r requirements-dev.txt
 pytest
 ```
 
-The suite runs fully offline: the regex baseline stands in for Gemini, local
-state goes to a temp dir, and the FX API is stubbed. It covers parsing, verify's
-retry, the anomaly rules, append-only storage and dedupe, FX fallback, the batch
-pipeline, and `POST /run`.
+Nine offline tests, no API key needed. A scripted fake LLM stands in for the real
+one, so the tests can check things like "a wrong amount is rejected and cannot be
+logged" and "the loop stops at the step limit".
 
-`POST /run` accepts `{}` (fetch from Gmail), `{"mock": true}`, or
-`{"emails": [{"id": "...", "text": "..."}]}`. It returns every record with its
-flags, reasons, `corrected`, `needs_review`, and `logged` (false means a duplicate
-that was skipped).
+## Your real Gmail (optional)
 
-## Eval
+1. In [Google Cloud Console](https://console.cloud.google.com/), enable the **Gmail API**.
+2. On the OAuth consent screen, add yourself as a test user and add only the
+   scope `gmail.readonly`.
+3. Create an OAuth client ID of type **Desktop app** and save the JSON as
+   `credentials.json` in this folder.
+4. Run `python run.py --gmail`. A browser opens once to ask for read-only access.
 
-```bash
-python eval.py                    # Gemini extraction (needs GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT)
-python eval.py --extractor regex  # offline no-LLM baseline
-python eval.py --no-cache         # force fresh Gemini calls
-```
+## Deployment
 
-**Gemini cost per run: at most 2 requests**, however many emails there are.
-All emails go out in one request, and any that fail `verify` are re-extracted
-together in one more. `GEMINI_BATCH_SIZE` (default 25, the Gmail fetch cap) splits
-very large batches. This applies to `run.py`, `POST /run`, and `eval.py`.
-`adk run agent` is different: there the model calls the tools one email at a
-time, so it costs a request per tool call.
-
-Gemini outputs are cached per email in `data/.cache/extractions.jsonl`
-(gitignored), and only uncached emails are sent. The key covers the model, the
-email, the verify hint, and the extraction prompt/schema. Editing the prompt or
-switching `GEMINI_MODEL` re-extracts. On the free tier, consider
-`GEMINI_RETRY_ATTEMPTS=2` so retries of an overloaded (503) request don't use up
-the daily quota.
-
-The eval set is 18 synthetic emails in `data/sample_emails/`: 13 bills and 5
-non-bills. They cover the hard cases:
-- several amounts in one email (subtotal/GST/total, total vs. minimum due, a usage breakdown)
-- INR/USD/EUR/GBP
-- `DD/MM` vs `MM/DD` dates and dates like `18-Oct-2026`
-- paid receipts, autopay, and undated invoices
-- promotions, a price-change notice, a shipping update, a card transaction alert, and a newsletter
-
-The eval runs extract → verify → anomaly detection over all of them and reports:
-
-- **(a) per-field extraction accuracy**, against `data/ground_truth.csv`
-- **(b) accuracy before vs. after `verify`**, plus how many records were corrected or left `needs_review`
-- **(c) anomaly precision / recall**, against `data/anomaly_labels.csv`
-
-The eval has no side effects: it writes nothing to the sheet or history.
-Anomalies are judged against `data/history_seed.json` at each label row's
-`as_of` date.
-
-Matching rules: amount within 0.01; vendor equal or contained after lowercasing
-and stripping non-alphanumerics; currency, due_date, paid, autopay and is_bill
-exact. Non-bills are scored on `is_bill` only. For receipts, `due_date` is the
-next billing date written in the email.
-
-To add a labelled email:
-1. Drop `name.txt` (with `From:`/`Subject:` headers) into `data/sample_emails/`.
-2. Add a row to `ground_truth.csv` (`file,vendor,amount,currency,due_date,paid,autopay,is_bill`).
-   For a non-bill, leave everything but `is_bill` (`false`) empty.
-3. Add a row to `anomaly_labels.csv` (`file,as_of,overdue,above_trend,notes`).
-4. If you want above-trend cases, add that vendor's past months to `history_seed.json`.
-
-## Deploy to Cloud Run
-
-When `GOOGLE_CLOUD_PROJECT` is set, both the extractor and the ADK agent switch
-from the API key to **Vertex AI**, authenticating as the Cloud Run service
-account. No API key is deployed.
+The agent runs as a small web service. Locally:
 
 ```bash
-PROJECT=your-project-id REGION=asia-south1 SA=bill-tracker@$PROJECT.iam.gserviceaccount.com
-gcloud config set project $PROJECT
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com aiplatform.googleapis.com \
-  firestore.googleapis.com sheets.googleapis.com gmail.googleapis.com \
-  secretmanager.googleapis.com cloudscheduler.googleapis.com
-gcloud firestore databases create --location=$REGION
-
-gcloud iam service-accounts create bill-tracker
-for role in roles/aiplatform.user roles/datastore.user roles/secretmanager.secretAccessor; do
-  gcloud projects add-iam-policy-binding $PROJECT --member=serviceAccount:$SA --role=$role
-done
-# Share your Sheet with $SA (Editor).
-
-# Gmail token created locally (see OAuth above) -> Secret Manager
-gcloud secrets create gmail-token --data-file=token.json
-
-gcloud run deploy bill-tracker --source . --region $REGION \
-  --service-account $SA --no-allow-unauthenticated \
-  --set-env-vars GEMINI_MODEL=gemini-3.8-flash,FX_SOURCE=live,GOOGLE_CLOUD_PROJECT=$PROJECT,GOOGLE_CLOUD_LOCATION=us-central1,HISTORY_BACKEND=firestore,GOOGLE_SHEET_ID=<sheet-id>,GMAIL_TOKEN_PATH=/secrets/gmail/token.json \
-  --set-secrets /secrets/gmail/token.json=gmail-token:latest
-
-# Run it daily at 08:00 IST
-gcloud run services add-iam-policy-binding bill-tracker --region $REGION \
-  --member=serviceAccount:$SA --role=roles/run.invoker
-gcloud scheduler jobs create http bill-tracker-daily --location $REGION \
-  --schedule "0 8 * * *" --time-zone Asia/Kolkata --http-method POST \
-  --uri "$(gcloud run services describe bill-tracker --region $REGION --format 'value(status.url)')/run" \
-  --headers Content-Type=application/json --message-body '{}' \
-  --oidc-service-account-email $SA
+uvicorn main:app --port 8080
+curl -X POST localhost:8080/run
 ```
 
-Notes:
-- The service is private (`--no-allow-unauthenticated`); only Scheduler's OIDC token can call it.
-- Local JSON/CSV on Cloud Run is ephemeral, so set `HISTORY_BACKEND=firestore` and `GOOGLE_SHEET_ID` in prod.
-- If the Gmail token is missing or invalid, the service fails fast. It never tries a browser consent flow on Cloud Run.
+In a container:
 
-## Structure
+```bash
+docker build -t bill-tracker .
+docker run -p 8080:8080 -e GEMINI_API_KEY=your_key bill-tracker
+```
+
+On Google Cloud Run, with the key stored in Secret Manager:
+
+```bash
+printf 'your_key' | gcloud secrets create gemini-key --data-file=-
+gcloud run deploy bill-tracker --source . --region asia-south1 \
+  --set-secrets GEMINI_API_KEY=gemini-key:latest --no-allow-unauthenticated
+```
+
+A container's disk is temporary. To keep long-term memory between restarts,
+mount a storage volume and point `MEMORY_PATH` at it.
+
+## Safety
+
+The agent can read emails and append rows to a log. That is all. This is
+enforced by what exists, not by the prompt:
+
+- There is no tool to pay, delete, send or edit, so no prompt can make it do so.
+- Gmail access uses the `gmail.readonly` permission only.
+- The log is append-only, and only a bill that passed `check_bill` can be saved.
+
+## Known limits
+
+- The injection guardrail is a short list of phrases. It catches obvious attacks only.
+- The output guardrail checks the amount, vendor and currency against the email.
+  It checks that the due date is a valid date, but not that it matches the email.
+- Exchange rates are a fixed table in `agent/tools.py`.
+
+## Project structure
 
 ```
-bill-tracker-agent/
-├── agent/
-│   ├── schemas.py     # typed InvoiceFields (Gemini response schema)
-│   ├── currency.py    # normalization to base currency (static or daily live rates)
-│   ├── parsing.py     # regex evidence for verify + no-LLM baseline extractor
-│   ├── storage.py     # sheet/CSV and Firestore/JSON backends (append-only)
-│   ├── tools.py       # the five ADK tools
-│   ├── pipeline.py    # deterministic batch: fetch -> extract -> verify -> flag -> log
-│   ├── agent.py       # ADK agent: registers tools, runs the ReAct loop
-│   └── __init__.py
-├── data/
-│   ├── sample_emails/       # labelled eval emails
-│   ├── ground_truth.csv     # extraction labels
-│   ├── anomaly_labels.csv   # anomaly labels (with as_of date)
-│   └── history_seed.json    # synthetic past bills for above-trend eval
-├── docs/architecture.md
-├── tests/             # offline pytest suite
-├── eval.py            # extraction + verify + anomaly metrics
-├── run.py             # CLI batch run (--mock)
-├── main.py            # FastAPI entrypoint (Cloud Run)
-├── run_day1.py        # Day 1 direct tool test
-├── Dockerfile
-├── requirements.txt
-├── requirements-dev.txt
-└── .env.example
+agent/
+  llm.py          1. the LLM
+  tools.py        2. tools and tool calling
+  memory.py       3. short-term and long-term memory
+  guardrails.py   4. guardrails
+  tracing.py      5. observability
+  agent.py        6. planning and 7. the agent loop
+  gmail.py        optional: real Gmail inbox, read-only
+eval.py           8. evaluation
+main.py           9. deployment: the web service
+Dockerfile        9. deployment: the container
+run.py            run the agent from the command line
+tests/            offline tests
+data/
+  sample_emails/      19 sample emails
+  labels.csv          the correct answers for the eval
+  history_seed.csv    3 months of past bills, used by the eval
 ```

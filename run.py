@@ -1,45 +1,35 @@
-"""Batch run of the full pipeline from the command line.
+"""Run the agent once from the command line.
 
-fetch_emails -> extract_invoice -> verify -> flag_anomalies -> log_to_sheet
-
-Usage:
-    python run.py --mock     # read data/sample_emails/ instead of Gmail
-    python run.py            # Gmail (read-only); first run opens the OAuth consent page
+    python run.py           # sample inbox in data/sample_emails/ (no Google account needed)
+    python run.py --gmail   # your real Gmail, read-only (see README for the one-time setup)
 """
 
-import argparse
 import os
+import sys
 
 from dotenv import load_dotenv
 
-load_dotenv()
+from agent.agent import run_agent
 
+# Step 1: Load the API key from .env and choose the inbox.
+load_dotenv(".env")
+if "--gmail" in sys.argv:
+    os.environ["INBOX"] = "gmail"
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--mock", action="store_true", help="read data/sample_emails/ instead of Gmail")
-    args = parser.parse_args()
-    if args.mock:
-        os.environ["MOCK_INBOX"] = "1"
+# Step 2: Run the agent. It prints every step while it works.
+result = run_agent()
 
-    from agent.pipeline import run_batch  # noqa: E402  (import after env is set)
-
-    result = run_batch()
-    for r in result["records"]:
-        status = "logged" if r["logged"] else "duplicate, skipped"
-        print(f"\n=== {r['source_id']} ({status}) ===")
-        print(f"  {r['vendor']}: {r['amount']} {r['currency']} -> {r['amount_base']} {r['base_currency']}"
-              f", due {r['due_date']}, paid={r['paid']}, autopay={r.get('autopay', False)}")
-        for issue in r["issues"]:
-            print(f"  NEEDS REVIEW: {issue}")
-        for reason in r["reasons"]:
-            print(f"  FLAG: {reason}")
-    if result["skipped"]:
-        print(f"\nSkipped {len(result['skipped'])} non-bill email(s): "
-              + ", ".join(f"{s['id']} ({s['vendor']})" for s in result["skipped"]))
-    for e in result["errors"]:
-        print(f"\n!!! {e['id']}: {e['error']}")
-
-
-if __name__ == "__main__":
-    main()
+# Step 3: Show the plan, the bills and the cost of the run.
+print("\n===== PLAN =====\n" + result["plan"])
+print("\n===== BILLS =====")
+for bill in result["bills"]:
+    status = "logged" if bill["logged"] else "already logged"
+    print(f"{bill['vendor']}: ₹{bill['amount_inr']:,.2f}, due {bill['due_date'] or 'no date'} ({status})")
+    for flag in bill["flags"]:
+        print(f"   FLAG  {flag}")
+print(f"\nSkipped (not bills): {', '.join(result['skipped']) or 'none'}")
+print("\n===== AGENT'S SUMMARY =====\n" + result["answer"])
+print(f"\n===== RUN {result['run_id']} =====")
+print(f"{result['llm_calls']} LLM calls, {result['tool_calls']} tool calls, "
+      f"{result['tokens']} tokens, {result['seconds']} seconds")
+print("Bills are saved in data/bills.csv. The full trace is in logs/trace.jsonl.")
