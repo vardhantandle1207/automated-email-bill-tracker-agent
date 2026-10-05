@@ -12,7 +12,7 @@ concept is visible in about 700 lines of code that you can read in one sitting.
                                   │
                  fetch_emails ────┤  read the inbox (read-only)
                  check_bill ──────┤  verify against the email, convert to ₹, flag anomalies
-                 log_bill ────────┘  append one row to data/bills.csv
+                 log_bill ────────┘  append one row to the bill log (CSV file or Google Sheet)
 ```
 
 ## The 9 concepts, and where each one lives
@@ -23,7 +23,7 @@ Read the files in this order. Every file is split into `Step 1`, `Step 2`, ... c
 |---|---|---|---|
 | 1 | LLM | [agent/llm.py](agent/llm.py) | One function, `chat()`, that sends the conversation to Gemini or OmniRoute and returns one reply |
 | 2 | Tools and tool calling | [agent/tools.py](agent/tools.py) | Three Python functions the LLM may ask us to run, plus their descriptions |
-| 3 | Short-term and long-term memory | [agent/memory.py](agent/memory.py) | Short-term: the conversation and emails of this run. Long-term: `data/bills.csv`, kept between runs |
+| 3 | Short-term and long-term memory | [agent/memory.py](agent/memory.py) | Short-term: the conversation and emails of this run. Long-term: the bill log (`data/bills.csv` or a Google Sheet), kept between runs |
 | 4 | Guardrails | [agent/guardrails.py](agent/guardrails.py) | Block prompt injection, reject values that are not in the email, limit the loop to 8 steps |
 | 5 | Observability | [agent/tracing.py](agent/tracing.py) | Every LLM call and tool call is printed and saved to `logs/trace.jsonl` with tokens and timing |
 | 6 | Planning | [agent/agent.py](agent/agent.py) | The LLM writes a numbered plan before it is given any tool |
@@ -77,7 +77,8 @@ requests per minute, so a run can pause for 20 to 60 seconds while it waits.
    past bills in long-term memory, and flags the bill if it is:
    - **overdue**: past its due date, not paid, and not on autopay
    - **above trend**: more than 20% above the average of that vendor's last 3 bills
-4. **Log.** It calls `log_bill`, which appends the checked bill to `data/bills.csv`.
+4. **Log.** It calls `log_bill`, which appends the checked bill to the bill log:
+   `data/bills.csv`, or your Google Sheet if you set one up.
    A bill that did not pass the check cannot be logged.
 5. **Summarise.** With no tools left to call, it writes a summary and the loop ends.
 
@@ -114,18 +115,31 @@ proof of accuracy on a real inbox.
 pytest
 ```
 
-Nine offline tests, no API key needed. A scripted fake LLM stands in for the real
+Eleven offline tests, no API key needed. A scripted fake LLM stands in for the real
 one, so the tests can check things like "a wrong amount is rejected and cannot be
 logged" and "the loop stops at the step limit".
 
-## Your real Gmail (optional)
+## Real Gmail and Google Sheet (optional)
 
-1. In [Google Cloud Console](https://console.cloud.google.com/), enable the **Gmail API**.
-2. On the OAuth consent screen, add yourself as a test user and add only the
-   scope `gmail.readonly`.
-3. Create an OAuth client ID of type **Desktop app** and save the JSON as
-   `credentials.json` in this folder.
-4. Run `python run.py --gmail`. A browser opens once to ask for read-only access.
+By default the agent reads the sample emails and writes a CSV file. With a
+one-time setup it reads your real Gmail (read-only) and logs to a Google Sheet.
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), enable the
+   **Gmail API** and the **Google Sheets API**.
+2. Set up the OAuth consent screen (user type External) and add yourself as a test user.
+3. Create an OAuth client ID of type **Desktop app** and save the downloaded
+   file as `credentials.json` in this folder.
+4. Create an empty Google Sheet and copy its id from the address bar
+   (`docs.google.com/spreadsheets/d/<id>/edit`) into `.env` as `GOOGLE_SHEET_ID=<id>`.
+5. Run `python run.py --gmail`. A browser opens once to ask for permission, and the
+   login is saved in `token.json`.
+
+The sheet gets a header row on the first run and one new row per bill after
+that. Setting only `GOOGLE_SHEET_ID` (without `--gmail`) logs the sample emails
+to the sheet.
+
+Real emails are sent to the LLM provider to be read. On a free API tier the
+provider may use that text to improve its products, so check its terms first.
 
 ## Deployment
 
@@ -162,6 +176,9 @@ enforced by what exists, not by the prompt:
 - There is no tool to pay, delete, send or edit, so no prompt can make it do so.
 - Gmail access uses the `gmail.readonly` permission only.
 - The log is append-only, and only a bill that passed `check_bill` can be saved.
+  Values are written to the sheet as plain text, so email text cannot run as a formula.
+- The Google Sheets permission covers all of your sheets, although the code only
+  reads and appends rows in the one sheet you name.
 
 ## Known limits
 
@@ -181,6 +198,8 @@ agent/
   tracing.py      5. observability
   agent.py        6. planning and 7. the agent loop
   gmail.py        optional: real Gmail inbox, read-only
+  sheets.py       optional: bill log in a Google Sheet
+  google_login.py optional: one Google sign-in for both
 eval.py           8. evaluation
 main.py           9. deployment: the web service
 Dockerfile        9. deployment: the container

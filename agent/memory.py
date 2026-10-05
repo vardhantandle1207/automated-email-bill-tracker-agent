@@ -1,8 +1,9 @@
 """CONCEPT 3: MEMORY.
 
 Short-term memory: what the agent knows during ONE run. It is gone when the run ends.
-Long-term memory:  what the agent remembers BETWEEN runs. Here it is a CSV file
-                   with one row per logged bill, which you can open in Excel.
+Long-term memory:  what the agent remembers BETWEEN runs: one row per logged bill.
+                   The rows live in a CSV file (data/bills.csv), or in a Google
+                   Sheet if you set GOOGLE_SHEET_ID.
 """
 
 import csv
@@ -32,32 +33,43 @@ def _path() -> str:
 
 def vendor_key(name: str) -> str:
     """'HDFC Bank' and 'hdfc-bank' are the same vendor: compare lowercase letters and digits only."""
-    return re.sub(r"[^a-z0-9]", "", name.lower())
+    return re.sub(r"[^a-z0-9]", "", str(name).lower())
 
 
 def recall(vendor: str | None = None) -> list[dict]:
     """Read past bills, oldest first. Give a vendor to get only that vendor's bills."""
-    # Step 1: No file yet means the agent has no memories.
-    if not os.path.exists(_path()):
-        return []
-    # Step 2: Read every row, then keep the ones for this vendor.
-    with open(_path(), newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
+    # Step 1: Read every row, from the Google Sheet if one is set up, else from the CSV file.
+    if os.getenv("GOOGLE_SHEET_ID"):
+        from .sheets import read_sheet
+        rows = read_sheet()
+    elif os.path.exists(_path()):
+        with open(_path(), newline="", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+    else:
+        rows = []  # no file yet: the agent has no memories
+    # Step 2: Keep the rows for this vendor.
     return [r for r in rows if vendor is None or vendor_key(r["vendor"]) == vendor_key(vendor)]
 
 
 def remember(bill: dict) -> bool:
-    """Append one bill to the file. Returns False if it was already there."""
+    """Append one bill to the log. Returns False if it was already there."""
     # Step 1: Skip duplicates: the same email, or the same vendor with the same due date.
     for row in recall(bill["vendor"]):
         if row["email_id"] == bill["email_id"] or (bill["due_date"] and row["due_date"] == bill["due_date"]):
             return False
-    # Step 2: Add one row at the end. We only ever append: no edits, no deletes.
+    # Step 2: Build the row.
+    row = {**bill, "logged_at": datetime.now().isoformat(timespec="seconds"),
+           "due_date": bill["due_date"] or "", "flags": "; ".join(bill["flags"])}
+    # Step 3: Add it at the end of the Google Sheet or the CSV file.
+    #         We only ever append: no edits, no deletes.
+    if os.getenv("GOOGLE_SHEET_ID"):
+        from .sheets import append_to_sheet
+        append_to_sheet(COLUMNS, [row[column] for column in COLUMNS])
+        return True
     os.makedirs(os.path.dirname(_path()) or ".", exist_ok=True)
     with open(_path(), "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=COLUMNS, extrasaction="ignore")
         if f.tell() == 0:
             writer.writeheader()
-        writer.writerow({**bill, "logged_at": datetime.now().isoformat(timespec="seconds"),
-                         "due_date": bill["due_date"] or "", "flags": "; ".join(bill["flags"])})
+        writer.writerow(row)
     return True

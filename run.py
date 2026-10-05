@@ -2,6 +2,8 @@
 
     python run.py           # sample inbox in data/sample_emails/ (no Google account needed)
     python run.py --gmail   # your real Gmail, read-only (see README for the one-time setup)
+
+Bills are saved to data/bills.csv, or to your Google Sheet if GOOGLE_SHEET_ID is set in .env.
 """
 
 import os
@@ -32,4 +34,5 @@ print("\n===== AGENT'S SUMMARY =====\n" + result["answer"])
 print(f"\n===== RUN {result['run_id']} =====")
 print(f"{result['llm_calls']} LLM calls, {result['tool_calls']} tool calls, "
       f"{result['tokens']} tokens, {result['seconds']} seconds")
-print("Bills are saved in data/bills.csv. The full trace is in logs/trace.jsonl.")
+where = "your Google Sheet" if os.getenv("GOOGLE_SHEET_ID") else "data/bills.csv"
+print(f"Bills are saved in {where}. The full trace is in logs/trace.jsonl.")

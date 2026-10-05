@@ -26,6 +26,7 @@ def sandbox(tmp_path, monkeypatch):
     monkeypatch.setenv("TRACE_PATH", str(tmp_path / "trace.jsonl"))
     monkeypatch.setenv("TODAY", "2026-10-20")
     monkeypatch.setenv("INBOX", "mock")
+    monkeypatch.setenv("GOOGLE_SHEET_ID", "")  # never touch a real Google Sheet from a test
     return tmp_path
 
 
@@ -78,6 +79,30 @@ def test_long_term_memory_appends_and_skips_duplicates():
     assert memory.remember(bill) is False  # same bill again
     assert [row["vendor"] for row in memory.recall("tsspdcl")] == ["TSSPDCL"]
     assert memory.recall("Netflix") == []
+
+
+def test_long_term_memory_can_live_in_a_google_sheet(monkeypatch):
+    from agent import sheets
+    cells = []  # a pretend Google Sheet: a list of rows
+    monkeypatch.setenv("GOOGLE_SHEET_ID", "pretend-sheet")
+    monkeypatch.setattr(sheets, "read_sheet", lambda: [dict(zip(cells[0], row)) for row in cells[1:]])
+    monkeypatch.setattr(sheets, "append_to_sheet",
+                        lambda columns, row: cells.extend([row] if cells else [columns, row]))
+    bill = {**ELECTRICITY, "amount_inr": 1240.5, "flags": ["OVERDUE: test"]}
+    assert memory.remember(bill) is True and memory.remember(bill) is False
+    assert cells[0] == memory.COLUMNS and len(cells) == 2  # header + one row, no duplicate
+    assert memory.recall("TSSPDCL")[0]["flags"] == "OVERDUE: test"
+
+
+def test_gmail_html_email_becomes_readable_text():
+    import base64
+    from agent.gmail import _text
+    page = "<html><style>p{color:red}</style><p>Amount due:&nbsp;&#8377;649</p><br><p>Due 28-10-2026</p></html>"
+    message = {"payload": {"headers": [{"name": "From", "value": "Netflix"}, {"name": "Subject", "value": "Bill"}],
+                           "mimeType": "text/html", "body": {"data": base64.urlsafe_b64encode(page.encode()).decode()}}}
+    text = _text(message)
+    assert text.startswith("From: Netflix\nSubject: Bill") and "color:red" not in text
+    assert "Amount due: ₹649" in text and "Due 28-10-2026" in text
 
 
 # ---------------- The agent loop ----------------

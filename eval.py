@@ -35,7 +35,7 @@ if args.model:
 #         a temporary memory file that starts with 3 past months of bills, and a fixed "today".
 sandbox = os.path.join(tempfile.mkdtemp(), "bills.csv")
 shutil.copy("data/history_seed.csv", sandbox)
-os.environ.update(MEMORY_PATH=sandbox, INBOX="mock", TODAY="2026-10-20")
+os.environ.update(MEMORY_PATH=sandbox, GOOGLE_SHEET_ID="", INBOX="mock", TODAY="2026-10-20")
 
 # Step 3: Run the agent once over the sample inbox.
 result = run_agent()
