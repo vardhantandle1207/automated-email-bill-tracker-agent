@@ -1,14 +1,9 @@
-"""CONCEPT 8: EVALUATION (measuring the agent instead of trusting it).
+"""Evaluation: run the agent on the labelled emails and score it.
 
-We run the agent on sample emails whose correct answers we wrote by hand in
-data/labels.csv, then count how often it was right. Many of the emails are
-deliberately hard: several amounts in one email, foreign number and date
-formats, emails that look like bills but are not, and prompt injections.
+Labels are in data/labels.csv. See docs/evaluation.md for what the set covers.
 
-    python eval.py                                      # Gemini
-    python eval.py --model gemini-3.5-flash             # another Gemini model
-    python eval.py --provider omniroute                 # OmniRoute, which picks the model ("auto")
-    python eval.py --provider omniroute --model <id>    # a specific model behind OmniRoute
+    python eval.py                            # default Gemini model
+    python eval.py --model gemini-3.5-flash   # another Gemini model
 
 Each finished batch is saved in logs/eval_cache.json. If the provider runs out of
 quota part-way, run the same command again later and it continues where it stopped.
@@ -30,9 +25,8 @@ from agent.agent import run_agent
 from agent.memory import vendor_key
 
 load_dotenv(".env")
-BATCH = 22  # emails per agent run. A real Gmail run reads at most 25, so we test at that size.
+BATCH = 22  # a real Gmail run reads at most 25 emails, so test at about that size
 
-# Step 1: Choose which LLM to evaluate.
 parser = argparse.ArgumentParser()
 parser.add_argument("--provider", default=os.getenv("LLM_PROVIDER", "gemini"), choices=list(llm.PROVIDERS))
 parser.add_argument("--model", help="model id for that provider (default: the provider's default)")
@@ -42,14 +36,12 @@ if args.model:
     os.environ[llm.PROVIDERS[args.provider]["model_env"]] = args.model
 model = os.getenv(llm.PROVIDERS[args.provider]["model_env"], llm.PROVIDERS[args.provider]["default_model"])
 
-# Step 2: Build a sandbox so the eval never touches your real bill log:
-#         a temporary memory file that starts with 3 past months of bills, and a fixed "today".
+# sandbox: a temporary bill log seeded with three past months, and a fixed "today"
 sandbox = tempfile.mkdtemp()
 shutil.copy("data/history_seed.csv", os.path.join(sandbox, "bills.csv"))
 os.environ.update(MEMORY_PATH=os.path.join(sandbox, "bills.csv"), GOOGLE_SHEET_ID="", INBOX="mock", TODAY="2026-10-20")
 
-# Step 3: Split the emails into inbox-sized batches and run the agent once per batch.
-#         The eval set is the 19 demo emails plus the harder ones in data/eval_emails/.
+# one agent run per batch; finished batches are cached so a quota failure can be resumed
 files = sorted(glob.glob("data/sample_emails/*.txt") + glob.glob("data/eval_emails/*.txt"), key=os.path.basename)
 cache_path = "logs/eval_cache.json"
 cache = json.load(open(cache_path, encoding="utf-8")) if os.path.exists(cache_path) else {}
@@ -81,7 +73,6 @@ for start in range(0, len(files), BATCH):
 if not runs:
     raise SystemExit("No batch finished, so there is nothing to score yet.")
 
-# Step 4: Compare every email with its label, field by field.
 with open("data/labels.csv", encoding="utf-8") as f:
     labels = [label for label in csv.DictReader(f) if label["file"] in tested]
 fields = ["is_bill", "vendor", "amount", "currency", "due_date", "paid", "autopay"]
@@ -111,7 +102,6 @@ for label in labels:
             got = (label["file"] in found) if field == "is_bill" else bill[field]
             mistakes.append(f"{label['file']}: {field} was {got}, expected {label[field]}")
 
-    # Step 5: Compare the anomaly flags with the labels.
     flags = (found.get(label["file"]) or {}).get("flags", [])
     flags_ok = True
     for kind, column in (("OVERDUE", "overdue"), ("ABOVE TREND", "above_trend")):
@@ -126,7 +116,6 @@ for label in labels:
         perfect["all"] += 1
         perfect["injection"] += "injection" in label["file"]
 
-# Step 6: Print the report.
 injections = sum("injection" in label["file"] for label in labels)
 print(f"\n===== EVALUATION: {args.provider} / {model}, {len(labels)} of {len(files)} emails, {len(runs)} runs =====")
 print(f"\nEmails handled fully correctly: {perfect['all']}/{len(labels)} ({perfect['all'] / len(labels):.0%})")
