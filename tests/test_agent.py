@@ -62,6 +62,12 @@ def test_output_guardrail_rejects_values_not_in_the_email():
     assert len(guardrails.check_bill(bad, email, ["INR"])) == 4
 
 
+def test_output_guardrail_reads_indian_us_and_european_numbers():
+    text = "Total ₹1,24,503.22, fee $149.90, Gesamtbetrag: 11,31 €, big 1.234,56 €, Rs 15,000/-, due 31.10.2026."
+    assert guardrails.numbers_in(text)[:5] == [124503.22, 149.90, 11.31, 1234.56, 15000.0]
+    assert 11.31 not in guardrails.numbers_in("Amount: 1,131")  # 1,131 is one thousand, not 11.31
+
+
 # ---------------- Tools and long-term memory ----------------
 
 def test_flags_overdue_and_above_trend():

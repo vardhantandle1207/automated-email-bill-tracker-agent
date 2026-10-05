@@ -1,0 +1,15 @@
+From: ICICI Bank Credit Cards <credit_cards@icicibank.com>
+Subject: ICICI Bank Credit Card Statement - September 2026
+
+Dear Customer,
+
+Your statement for card XXXX XXXX XXXX 9005 is ready.
+
+Statement date: 04-Oct-2026
+Last payment received: ₹38,410.00 on 20-Sep-2026
+Total Amount Due: ₹41,872.35
+Minimum Amount Due: ₹2,093.62
+Payment Due Date: 22-Oct-2026
+Available credit limit: ₹1,58,127.65
+
+ICICI Bank

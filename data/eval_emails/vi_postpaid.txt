@@ -1,0 +1,17 @@
+From: Vi <ebill@myvi.in>
+Subject: Your Vi Postpaid bill for September 2026
+
+Dear Customer,
+
+Your Vi Postpaid bill for 98XXXXX771 is ready.
+
+Previous balance: ₹812.00
+Payments received: ₹812.00
+Current charges: ₹589.00
+GST (18%): ₹106.02
+Total amount payable: ₹695.02
+Due date: 14-Oct-2026
+
+A late fee of ₹50.00 applies after the due date (₹745.02).
+
+Vi (Vodafone Idea Ltd)

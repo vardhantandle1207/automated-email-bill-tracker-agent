@@ -7,6 +7,5 @@ logs/
 __pycache__/
 .pytest_cache/
 .git/
-_old/
 tests/
-data/.cache/
+data/eval_emails/

@@ -36,13 +36,25 @@ def _simple(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
+def numbers_in(text: str) -> list[float]:
+    """Every number written in the text, whichever way it is punctuated."""
+    numbers = []
+    for token in re.findall(r"\d[\d.,]*\d|\d", text):
+        if re.fullmatch(r"[\d.]+,\d{2}", token):  # European style: 1.234,56 means 1234.56
+            token = token.replace(".", "").replace(",", ".")
+        try:
+            numbers.append(float(token.replace(",", "")))  # Indian/US style: 1,24,503.22
+        except ValueError:
+            pass  # not a number after all, e.g. the date 31.10.2026
+    return numbers
+
+
 def check_bill(bill: dict, email_text: str, currencies: list[str]) -> list[str]:
     """OUTPUT guardrail: list what is wrong with a bill the model extracted. Empty list = OK."""
     issues = []
 
     # Step 1: The amount must be a number that is really written in the email.
-    numbers = [float(n.replace(",", "")) for n in re.findall(r"\d[\d,]*(?:\.\d+)?", email_text)]
-    if not any(abs(n - bill["amount"]) < 0.01 for n in numbers):
+    if not any(abs(n - bill["amount"]) < 0.01 for n in numbers_in(email_text)):
         issues.append(f"amount {bill['amount']} is not written in the email")
 
     # Step 2: The currency must be one we can convert.

@@ -36,7 +36,7 @@ def fetch_emails(memory) -> list[dict]:
         emails = read_gmail()
     else:
         emails = []
-        for path in sorted(glob.glob(SAMPLE_INBOX)):
+        for path in sorted(glob.glob(os.getenv("SAMPLE_INBOX", SAMPLE_INBOX))):
             with open(path, encoding="utf-8") as f:
                 emails.append({"email_id": os.path.basename(path), "text": f.read()})
 

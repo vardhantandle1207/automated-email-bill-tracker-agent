@@ -1,0 +1,10 @@
+From: HDFC Bank <alerts@hdfcbank.net>
+Subject: Credit alert for your account
+
+Dear Customer,
+
+INR 85,000.00 has been credited to your a/c XX4471 on 01-10-2026 by NEFT - ACME TECH SALARY SEP.
+
+Available balance: INR 1,12,640.18
+
+HDFC Bank

@@ -1,0 +1,15 @@
+From: Con Edison <billing@coned.com>
+Subject: Your Con Edison bill is ready
+
+Account number: 44-1234-5678-9
+Service address: 221 W 82nd St, New York, NY 10024
+
+Billing period: 09/02/2026 - 10/01/2026
+Electricity charges: $71.18
+Taxes and surcharges: $16.24
+Total amount due: $87.42
+Due date: 11/03/2026
+
+Pay online at coned.com.
+
+Con Edison

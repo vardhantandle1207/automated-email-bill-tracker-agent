@@ -1,0 +1,11 @@
+From: Uber Receipts <noreply@uber.com>
+Subject: Your Monday evening trip with Uber
+
+Thanks for riding.
+
+Total: ₹312.45
+Trip fare: ₹288.00
+Booking fee: ₹24.45
+Paid with UPI
+
+Uber

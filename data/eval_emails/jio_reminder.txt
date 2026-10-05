@@ -1,0 +1,13 @@
+From: Jio <care@jio.com>
+Subject: Reminder: your JioPostpaid Plus bill is due
+
+Dear Customer,
+
+This is a reminder that your JioPostpaid Plus bill for number 98XXXXX210 is still unpaid.
+
+Total amount payable: ₹ 799.00
+Pay by: 18-Oct-2026
+
+Please ignore this message if you have already paid.
+
+Team Jio

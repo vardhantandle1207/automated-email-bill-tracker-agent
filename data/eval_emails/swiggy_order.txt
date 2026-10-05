@@ -1,0 +1,12 @@
+From: Swiggy <noreply@swiggy.in>
+Subject: Your Swiggy order was delivered
+
+Your order from Paradise Biryani was delivered.
+
+Item total: ₹420.00
+Delivery fee: ₹36.00
+Taxes: ₹30.00
+Grand total: ₹486.00
+Paid via UPI on 4 Oct 2026
+
+Swiggy

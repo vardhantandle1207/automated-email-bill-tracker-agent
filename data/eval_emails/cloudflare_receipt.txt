@@ -1,0 +1,12 @@
+From: Cloudflare <billing@cloudflare.com>
+Subject: Cloudflare payment receipt
+
+Thank you for your payment.
+
+Cloudflare Pro Plan: $25.00
+Account credit applied: -$5.00
+Total paid: $20.00
+Paid on: October 2, 2026
+Card: Visa ending in 4021
+
+Cloudflare, Inc.

@@ -1,0 +1,14 @@
+From: Tata Power <customercare@tatapower.com>
+Subject: Part payment received - balance due
+
+Dear Customer,
+
+We received your part payment of ₹2,000.00 on 03-Oct-2026 for consumer no. 9000XXXX21.
+
+Bill amount: ₹5,499.00
+Amount received: ₹2,000.00
+Balance amount due: ₹3,499.00
+
+Please pay the balance by 15-Oct-2026.
+
+Tata Power

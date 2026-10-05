@@ -1,0 +1,14 @@
+From: Microsoft Azure <azure-noreply@microsoft.com>
+Subject: Your Microsoft Azure invoice is ready
+
+Hello,
+
+Your invoice for the billing period 1 September 2026 - 30 September 2026 is ready.
+
+Charges: USD 52.00
+Tax: USD 9.36
+Total including tax: USD 61.36
+
+Your payment method (Visa ending in 4021) will be charged automatically on 12 October 2026.
+
+Microsoft Azure

@@ -1,0 +1,16 @@
+From: BESCOM <ebill@bescom.co.in>
+Subject: BESCOM Electricity Bill - Account 4471XXXX
+
+Dear Consumer,
+
+Bill for the period 01/09/2026 to 30/09/2026.
+
+Units consumed: 312
+Arrears: ₹0.00
+Current bill: ₹2,184.00
+Net amount payable: ₹2,184.00
+Due date: 15/10/2026
+Amount payable after due date: ₹2,227.00
+Disconnection date: 30/10/2026
+
+BESCOM

@@ -1,0 +1,10 @@
+From: HDFC Bank <alerts@hdfcbank.net>
+Subject: UPI AutoPay mandate created
+
+Dear Customer,
+
+A UPI AutoPay mandate has been created for NETFLIX for up to ₹1,999.00 per month, valid until 30-09-2027.
+
+No amount has been debited now.
+
+HDFC Bank

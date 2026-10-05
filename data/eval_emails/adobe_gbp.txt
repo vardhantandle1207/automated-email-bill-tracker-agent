@@ -1,0 +1,15 @@
+From: Adobe <mail@mail.adobe.com>
+Subject: Your Adobe payment was successful
+
+Hello,
+
+Your payment was successful. Thank you.
+
+Creative Cloud Photography plan (monthly)
+Subtotal: £16.64
+VAT (20%): £3.33
+Total: £19.97
+Paid on: 02 October 2026
+Next billing date: 02 November 2026
+
+Adobe
